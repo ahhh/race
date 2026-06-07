@@ -163,7 +163,7 @@ function advanceWaypoint(car){
   const next=(car.wpIdx+1)%CL_N;
   const wp=CL[next];
   const dx=wp.x-car.x,dy=wp.y-car.y;
-  if(dx*dx+dy*dy<52*52){
+  if(dx*dx+dy*dy<100*100){
     car.wpIdx=next;
     if(next===0){car.laps++;return true;}
   }
@@ -212,8 +212,8 @@ class Car{
       this._move(dtt);this._updateProgress();return;}
     if(this.isPlayer)this._playerControl(dtt);
     else this._aiControl(dtt);
-    if(this.nitroTime>0){this.nitroTime-=dt;this.speed=Math.min(this.speed+0.22*dtt,this.maxSpd*1.65);}
-    const top=this.maxSpd*(this.mudTime>0?0.38:1);
+    if(this.nitroTime>0){this.nitroTime-=dt;this.speed=Math.min(this.speed+0.32*dtt,this.maxSpd*1.65);}
+    const top=this.maxSpd*(this.mudTime>0?0.38:this.nitroTime>0?1.65:1);
     this.speed=Math.max(0,Math.min(this.speed,top));
     this.speed*=Math.pow(DRAG,dtt);
     if(this.inAir){this.vz-=0.55*dtt;this.z+=this.vz;if(this.z<=0){this.z=0;this.vz=0;this.inAir=false;}}
@@ -290,7 +290,7 @@ class Car{
     }
     // Nitro flame — psychedelic
     if(this.nitroTime>0){
-      ctx.save();ctx.translate(this.x,this.y);ctx.rotate(this.angle-Math.PI/2);
+      ctx.save();ctx.translate(this.x,this.y);ctx.rotate(this.angle+Math.PI/2);
       const h1=(now_ms*0.2)%360,h2=(h1+60)%360;
       ctx.fillStyle=`hsl(${h1},100%,60%)`;
       ctx.beginPath();ctx.moveTo(-6,20);ctx.lineTo(0,34+Math.random()*8);ctx.lineTo(6,20);ctx.fill();
