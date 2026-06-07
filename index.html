@@ -150,7 +150,12 @@ function constrainCar(car){
   let bd=Infinity,bp=CL[0];
   for(const p of CL){const d=(car.x-p.x)**2+(car.y-p.y)**2;if(d<bd){bd=d;bp=p;}}
   const dx=car.x-bp.x,dy=car.y-bp.y,dist=Math.sqrt(dx*dx+dy*dy)||1;
-  car.x=bp.x+dx/dist*75;car.y=bp.y+dy/dist*75;car.speed*=0.80;return true;
+  car.x=bp.x+dx/dist*75;car.y=bp.y+dy/dist*75;
+  // Reflect the inward velocity component off the wall — no speed loss
+  const nx=dx/dist,ny=dy/dist;
+  const vn=car.vx*nx+car.vy*ny;
+  if(vn<0){car.vx-=vn*nx;car.vy-=vn*ny;car.angle=Math.atan2(car.vy,car.vx);car.speed=Math.hypot(car.vx,car.vy);}
+  return true;
 }
 
 function advanceWaypoint(car){
