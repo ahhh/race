@@ -164,9 +164,8 @@ function advanceWaypoint(car){
   const wp=CL[next];
   const dx=wp.x-car.x,dy=wp.y-car.y;
   if(dx*dx+dy*dy<52*52){
-    const tw=CL[(next+1)%CL_N];
-    const dot=car.vx*(tw.x-wp.x)+car.vy*(tw.y-wp.y);
-    if(dot>=0){car.wpIdx=next;if(next===0){car.laps++;return true;}}
+    car.wpIdx=next;
+    if(next===0){car.laps++;return true;}
   }
   return false;
 }
