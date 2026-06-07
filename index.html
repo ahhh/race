@@ -672,7 +672,7 @@ function renderShop(){
   upgs.forEach(([k,u],i)=>{
     const cx=tx+i*(cW+gap),cy=270,ch=hue(i*90);
     const hov=mx>=cx&&mx<=cx+cW&&my>=cy-cH/2&&my<=cy+cH/2;
-    const canBuy=u.level<u.max&&money>=u.costs[u.level];
+    const canBuy=u.level<u.max&&money-u.costs[u.level]>=fee;
 
     // Card
     ctx.fillStyle=hov&&canBuy?'rgba(80,0,120,0.4)':'rgba(4,0,20,0.85)';
