@@ -320,12 +320,15 @@ function initRace(){
   raceObs=getObs();finishOrder=[];
   const gx=CX+MIDA,gy=CY;
   const starts=[
-    {x:gx-22,y:gy-55,a:Math.PI/2,idx:0,isP:true},
-    {x:gx+22,y:gy-55,a:Math.PI/2,idx:1,isP:false},
-    {x:gx-22,y:gy-10,a:Math.PI/2,idx:2,isP:false},
-    {x:gx+22,y:gy-10,a:Math.PI/2,idx:3,isP:false},
+    {x:gx-22,y:gy+24,a:Math.PI/2,idx:0,isP:true},
+    {x:gx+22,y:gy+24,a:Math.PI/2,idx:1,isP:false},
+    {x:gx-22,y:gy+48,a:Math.PI/2,idx:2,isP:false},
+    {x:gx+22,y:gy+48,a:Math.PI/2,idx:3,isP:false},
   ];
-  cars=starts.map(s=>{const c=new Car(s.x,s.y,s.a,s.idx,s.isP);if(s.isP)c.nitroCans=2+UPG.nitro.level;return c;});
+  // Start past the finish line (wpIdx=1) so each return to wp0 counts as one lap.
+  // Previously cars started before the line so the first crossing was "free", requiring
+  // 4 crossings for 3 laps. Now 3 crossings = 3 laps.
+  cars=starts.map(s=>{const c=new Car(s.x,s.y,s.a,s.idx,s.isP);c.wpIdx=1;if(s.isP)c.nitroCans=2+UPG.nitro.level;return c;});
   player=cars[0];
   raceTime=0;countdown=3;cdTimer=1.0;raceGoing=false;raceEnding=false;endTimer=0;
 }
