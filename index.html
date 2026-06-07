@@ -56,6 +56,7 @@ function sfxNitro(){beep(420,0.25,0.18);setTimeout(()=>beep(660,0.2,0.14),100);}
 function sfxCrash(){beep(90,0.45,0.32,'sawtooth');}
 function sfxMud(){beep(160,0.3,0.13,'triangle');}
 function sfxJump(){beep(330,0.1,0.16,'sine');setTimeout(()=>beep(580,0.18,0.12,'sine'),90);}
+function sfxTurbo(){beep(550,0.07,0.22,'sine');setTimeout(()=>beep(880,0.14,0.18,'sine'),55);setTimeout(()=>beep(1100,0.12,0.14,'sine'),110);}
 function sfxWin(){[523,659,784,1047].forEach((f,i)=>setTimeout(()=>beep(f,'sine',0.28),i*130));}
 function sfxCountdown(n){beep(n>0?440:880,0.2,0.3);}
 
@@ -150,7 +151,12 @@ function constrainCar(car){
   let bd=Infinity,bp=CL[0];
   for(const p of CL){const d=(car.x-p.x)**2+(car.y-p.y)**2;if(d<bd){bd=d;bp=p;}}
   const dx=car.x-bp.x,dy=car.y-bp.y,dist=Math.sqrt(dx*dx+dy*dy)||1;
-  car.x=bp.x+dx/dist*75;car.y=bp.y+dy/dist*75;car.speed*=0.80;return true;
+  car.x=bp.x+dx/dist*75;car.y=bp.y+dy/dist*75;
+  // Reflect the inward velocity component off the wall — no speed loss
+  const nx=dx/dist,ny=dy/dist;
+  const vn=car.vx*nx+car.vy*ny;
+  if(vn<0){car.vx-=vn*nx;car.vy-=vn*ny;car.angle=Math.atan2(car.vy,car.vx);car.speed=Math.hypot(car.vx,car.vy);}
+  return true;
 }
 
 function advanceWaypoint(car){
@@ -170,14 +176,15 @@ function obsAt(t,lat,type,r){
   const a=t*Math.PI*2;
   const tx_=-Math.sin(a)*MIDA,ty_=Math.cos(a)*MIDB,tlen=Math.sqrt(tx_*tx_+ty_*ty_)||1;
   const nx=ty_/tlen,ny=-tx_/tlen;
-  return {x:CX+Math.cos(a)*MIDA+nx*lat,y:CY+Math.sin(a)*MIDB+ny*lat,type,r};
+  const angle=Math.atan2(ty_/tlen,tx_/tlen);
+  return {x:CX+Math.cos(a)*MIDA+nx*lat,y:CY+Math.sin(a)*MIDB+ny*lat,type,r,angle};
 }
 const RACE_OBS=[
-  [obsAt(0.20,0,'mud',24),obsAt(0.60,10,'jump',18)],
-  [obsAt(0.15,-8,'mud',24),obsAt(0.42,12,'mud',24),obsAt(0.68,0,'jump',18),obsAt(0.80,0,'rock',12)],
-  [obsAt(0.12,0,'mud',26),obsAt(0.33,-10,'jump',18),obsAt(0.55,10,'mud',24),obsAt(0.72,0,'rock',12),obsAt(0.88,0,'jump',18)],
-  [obsAt(0.10,5,'mud',26),obsAt(0.25,-12,'rock',13),obsAt(0.40,0,'jump',20),obsAt(0.55,8,'mud',26),obsAt(0.70,-5,'rock',13),obsAt(0.85,0,'jump',18)],
-  [obsAt(0.08,0,'rock',13),obsAt(0.18,10,'mud',26),obsAt(0.30,-10,'jump',20),obsAt(0.42,0,'mud',26),obsAt(0.55,8,'rock',13),obsAt(0.65,-8,'jump',20),obsAt(0.78,5,'mud',26),obsAt(0.90,0,'rock',13)],
+  [obsAt(0.20,0,'mud',24),obsAt(0.45,0,'turbo',22),obsAt(0.72,10,'jump',20)],
+  [obsAt(0.12,0,'turbo',22),obsAt(0.28,-8,'mud',24),obsAt(0.50,12,'mud',24),obsAt(0.68,0,'jump',20),obsAt(0.85,0,'turbo',22)],
+  [obsAt(0.08,0,'turbo',22),obsAt(0.22,0,'mud',26),obsAt(0.38,-10,'jump',20),obsAt(0.55,10,'mud',24),obsAt(0.70,0,'turbo',22),obsAt(0.88,0,'jump',20)],
+  [obsAt(0.05,0,'turbo',22),obsAt(0.18,5,'mud',26),obsAt(0.32,0,'jump',22),obsAt(0.48,8,'mud',26),obsAt(0.62,0,'turbo',22),obsAt(0.78,0,'jump',20),obsAt(0.92,-5,'mud',24)],
+  [obsAt(0.05,0,'turbo',22),obsAt(0.16,10,'mud',26),obsAt(0.27,-10,'jump',22),obsAt(0.38,0,'turbo',22),obsAt(0.50,0,'mud',26),obsAt(0.62,-8,'jump',22),obsAt(0.74,0,'turbo',22),obsAt(0.86,5,'mud',26)],
 ];
 function getObs(){return RACE_OBS[Math.min(raceNum,RACE_OBS.length-1)];}
 
@@ -189,7 +196,7 @@ class Car{
     this.wpIdx=0;this.laps=0;this.progress=0;
     this.finished=false;this.finishTime=0;this.place=0;
     this.stunTime=0;this.mudTime=0;this.nitroTime=0;this.nitroCans=0;
-    this.inAir=false;this.z=0;this.vz=0;
+    this.inAir=false;this.z=0;this.vz=0;this._turboPad=null;
     this.skid=[];
     this.aiLookAhead=4+idx;
     this.aiSpeedMult=0.82+idx*0.04+Math.random()*0.06;
@@ -252,14 +259,21 @@ class Car{
     this.speed=Math.min(this.speed,MAX_SPD*this.aiSpeedMult);
   }
   _checkObs(obs){
+    let onTurbo=null;
     for(const o of obs){
       const dx=this.x-o.x,dy=this.y-o.y;
       if(dx*dx+dy*dy<(o.r+12)**2){
         if(o.type==='mud'){if(this.mudTime<=0&&this.isPlayer)sfxMud();this.mudTime=2.0;}
         else if(o.type==='jump'&&!this.inAir){this.inAir=true;this.vz=4.2*this.jumpBoost;this.speed*=1.2;if(this.isPlayer)sfxJump();}
-        else if(o.type==='rock'&&this.stunTime<=0){this.stunTime=0.4;this.speed*=0.40;this.angle+=Math.PI+(Math.random()-0.5)*0.6;if(this.isPlayer)sfxCrash();}
+        else if(o.type==='turbo'){onTurbo=o;}
       }
     }
+    if(onTurbo&&onTurbo!==this._turboPad){
+      this._turboPad=onTurbo;
+      this.speed=Math.min(this.speed+this.maxSpd*1.1,this.maxSpd*1.7);
+      if(this.isPlayer)sfxTurbo();
+    }
+    if(!onTurbo)this._turboPad=null;
   }
 
   draw(){
@@ -443,6 +457,22 @@ function renderObs(obs){
       ctx.globalAlpha=1;noGlow();
       ctx.fillStyle='#000';ctx.font='bold 7px Courier New';ctx.textAlign='center';
       ctx.fillText('MUD',0,2);
+    }else if(o.type==='turbo'){
+      // Turbo pad — animated flowing chevrons
+      const tc=hue(55);
+      ctx.save();ctx.rotate(o.angle);
+      ctx.fillStyle='rgba(255,220,0,0.10)';
+      ctx.beginPath();ctx.ellipse(0,0,o.r,o.r*0.42,0,0,Math.PI*2);ctx.fill();
+      glow(tc,28);
+      ctx.strokeStyle=tc;ctx.lineWidth=2.5;ctx.lineCap='round';
+      const flow=(now_ms*0.004)%1;
+      for(let i=0;i<3;i++){
+        const phase=((i/3)+flow)%1;
+        const xoff=(phase*2-1)*o.r*0.55;
+        ctx.globalAlpha=0.35+0.65*Math.abs(Math.sin(phase*Math.PI));
+        ctx.beginPath();ctx.moveTo(xoff-7,-7);ctx.lineTo(xoff+7,0);ctx.lineTo(xoff-7,7);ctx.stroke();
+      }
+      ctx.globalAlpha=1;noGlow();ctx.restore();
     }else if(o.type==='jump'){
       // Hot pink ramp
       const ph=hue(300);
@@ -453,16 +483,6 @@ function renderObs(obs){
       ctx.beginPath();ctx.ellipse(0,0,o.r,o.r*0.8,0,0,Math.PI*2);ctx.stroke();
       ctx.fillStyle=ph;ctx.font='bold 13px Courier New';ctx.textAlign='center';
       ctx.fillText('↑',0,5);noGlow();
-    }else{
-      // Purple crystal rock
-      const ph=hue(270);
-      glow(ph,16);
-      ctx.fillStyle='#1a0033';
-      ctx.beginPath();ctx.moveTo(-o.r,o.r*0.4);ctx.lineTo(-o.r*0.4,-o.r);ctx.lineTo(o.r*0.4,-o.r*0.7);ctx.lineTo(o.r,o.r*0.3);ctx.closePath();ctx.fill();
-      ctx.strokeStyle=ph;ctx.lineWidth=1.5;ctx.stroke();
-      ctx.fillStyle=ph;
-      ctx.beginPath();ctx.moveTo(-o.r*0.5,0.05);ctx.lineTo(-o.r*0.2,-o.r*0.6);ctx.lineTo(o.r*0.15,-o.r*0.5);ctx.closePath();ctx.fill();
-      noGlow();
     }
     ctx.restore();
   }
@@ -622,7 +642,7 @@ function renderMenu(){
   ctx.strokeStyle=hov?hue(300):hue(0);ctx.lineWidth=1.5;ctx.stroke();noGlow();
   ctx.fillStyle=hov?hue(300):hue(0);ctx.font='bold 26px Courier New';ctx.textAlign='center';
   ctx.fillText('[ ENTER THE FRACTAL ]',W/2,492);
-  if(hov&&mclick){ensureAudio();initRace();STATE='race';}
+  if(hov&&mclick||keys['Space']){ensureAudio();initRace();STATE='race';keys['Space']=false;}
 
   ctx.fillStyle='#554488';ctx.font='12px Courier New';ctx.textAlign='center';
   ctx.fillText('WASD / ARROWS = Drive   SPACE = Nitro Boost',W/2,538);
