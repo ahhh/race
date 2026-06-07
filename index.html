@@ -74,6 +74,29 @@ function loadSheet(b64){
   img.src='data:image/png;base64,'+b64;
 }
 loadSheet(SHEET1_B64);
+
+// ── generative placeholder backgrounds ───────────────────────
+const BG_IMGS={};
+(function(){
+  const base='https://generative-placeholders.stefanbohacek.com/image';
+  const screens=[
+    ['menu',    'joy-division',   42],
+    ['shop',    'mondrian',       71],
+    ['results', 'triangles',      55],
+    ['gameover','cubic-disarray', 13],
+  ];
+  for(const[k,style,colors]of screens){
+    const img=new Image();
+    img.src=`${base}?width=${W}&height=${H}&style=${style}&colors=${colors}`;
+    BG_IMGS[k]=img;
+  }
+})();
+function drawBg(key,alpha=0.2){
+  const img=BG_IMGS[key];
+  if(!img||!img.complete||!img.naturalWidth)return;
+  ctx.save();ctx.globalAlpha=alpha;ctx.drawImage(img,0,0,W,H);ctx.restore();
+}
+
 function drawCarSprite(carIdx,x,y,angle){
   if(!sheet)return;
   const {col,row}=CAR_CELLS[carIdx];
@@ -556,6 +579,7 @@ function panel(x,y,w,h){
 function renderMenu(){
   // Deep space bg
   ctx.fillStyle='#020008';ctx.fillRect(0,0,W,H);
+  drawBg('menu');
   drawStars();
 
   // Rotating neon rings
@@ -607,6 +631,7 @@ function renderMenu(){
 
 function renderShop(){
   ctx.fillStyle='#020008';ctx.fillRect(0,0,W,H);
+  drawBg('shop',0.18);
   drawStars();
 
   ctx.save();ctx.textAlign='center';
@@ -677,6 +702,7 @@ function renderShop(){
 
 function renderResults(){
   ctx.fillStyle='#020008';ctx.fillRect(0,0,W,H);
+  drawBg('results',0.22);
   drawStars();
 
   ctx.save();ctx.textAlign='center';
@@ -723,6 +749,7 @@ function renderResults(){
 
 function renderGameOver(){
   ctx.fillStyle='#020008';ctx.fillRect(0,0,W,H);
+  drawBg('gameover',0.25);
   drawStars();
   ctx.save();ctx.textAlign='center';
   glow('#ff0066',50);ctx.fillStyle='#ff0066';ctx.font='bold 64px Courier New';
