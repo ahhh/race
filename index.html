@@ -62,7 +62,7 @@ function sfxCountdown(n){beep(n>0?440:880,0.2,0.3);}
 let bgMusic=null;
 function startBgMusic(){
   if(!bgMusic){bgMusic=new Audio('pixel_sprint.mp3');bgMusic.loop=true;bgMusic.volume=0.35;}
-  bgMusic.currentTime=0;bgMusic.play().catch(()=>{});
+  if(bgMusic.paused)bgMusic.play().catch(()=>{});
 }
 function stopBgMusic(){if(bgMusic){bgMusic.pause();bgMusic.currentTime=0;}}
 
@@ -132,7 +132,7 @@ function drawStars(){
 }
 
 // ── game state ────────────────────────────────────────────────
-let STATE='menu';
+let STATE='title';
 let money=250,raceNum=0,finishOrder=[],lastPrize=0;
 const PRIZES=[600,350,150,50];
 const ENTRY_FEES=[0,80,120,180,250,350];
@@ -364,7 +364,7 @@ function updateRace(dt){
     });
     raceEnding=true;endTimer=2.8;
   }
-  if(raceEnding){endTimer-=dt;if(endTimer<=0){stopBgMusic();STATE='results';}}
+  if(raceEnding){endTimer-=dt;if(endTimer<=0)STATE='results';}
 }
 
 // ── render helpers ────────────────────────────────────────────
@@ -794,6 +794,24 @@ function renderGameOver(){
   ctx.restore();
 }
 
+// ── title screen ─────────────────────────────────────────────
+function renderTitle(){
+  drawStars();
+  ctx.fillStyle='rgba(2,0,8,0.55)';ctx.fillRect(0,0,W,H);
+  glow(hue(300),32);
+  ctx.fillStyle=hue(300);ctx.font='bold 80px Courier New';ctx.textAlign='center';
+  ctx.fillText('FRACTAL RIDER',W/2,H/2-60);
+  noGlow();
+  const blink=Math.floor(now_ms/500)%2===0;
+  if(blink){
+    glow(hue(180),14);
+    ctx.fillStyle=hue(180);ctx.font='bold 28px Courier New';
+    ctx.fillText('CLICK  TO  START',W/2,H/2+30);
+    noGlow();
+  }
+  if(mclick){ensureAudio();startBgMusic();STATE='menu';}
+}
+
 // ── main loop ────────────────────────────────────────────────
 let last=0;
 function loop(ts){
@@ -814,7 +832,8 @@ function loop(ts){
       if(money<fee&&money<Math.min(...Object.values(UPG).filter(u=>u.level<u.max).map(u=>u.costs[u.level]),999))
         STATE='gameover';
     }
-  }else if(STATE==='menu')renderMenu();
+  }else if(STATE==='title')renderTitle();
+  else if(STATE==='menu')renderMenu();
   else if(STATE==='shop')renderShop();
   else if(STATE==='results')renderResults();
   else if(STATE==='gameover')renderGameOver();
