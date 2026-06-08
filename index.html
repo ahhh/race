@@ -65,9 +65,6 @@ function startBgMusic(){
   if(bgMusic.paused)bgMusic.play().catch(()=>{});
 }
 function stopBgMusic(){if(bgMusic){bgMusic.pause();bgMusic.currentTime=0;}}
-// start music on first user gesture — browsers block autoplay before interaction
-(function(){function onFirst(){startBgMusic();window.removeEventListener('click',onFirst);window.removeEventListener('keydown',onFirst);}
-window.addEventListener('click',onFirst);window.addEventListener('keydown',onFirst);}());
 
 // ── sprites ──────────────────────────────────────────────────
 const CAR_CELLS=[{col:0,row:0},{col:0,row:1},{col:2,row:1},{col:1,row:1}];
@@ -135,7 +132,7 @@ function drawStars(){
 }
 
 // ── game state ────────────────────────────────────────────────
-let STATE='menu';
+let STATE='title';
 let money=250,raceNum=0,finishOrder=[],lastPrize=0;
 const PRIZES=[600,350,150,50];
 const ENTRY_FEES=[0,80,120,180,250,350];
@@ -797,6 +794,24 @@ function renderGameOver(){
   ctx.restore();
 }
 
+// ── title screen ─────────────────────────────────────────────
+function renderTitle(){
+  drawStars();
+  ctx.fillStyle='rgba(2,0,8,0.55)';ctx.fillRect(0,0,W,H);
+  glow(hue(300),32);
+  ctx.fillStyle=hue(300);ctx.font='bold 80px Courier New';ctx.textAlign='center';
+  ctx.fillText('FRACTAL RIDER',W/2,H/2-60);
+  noGlow();
+  const blink=Math.floor(now_ms/500)%2===0;
+  if(blink){
+    glow(hue(180),14);
+    ctx.fillStyle=hue(180);ctx.font='bold 28px Courier New';
+    ctx.fillText('CLICK  TO  START',W/2,H/2+30);
+    noGlow();
+  }
+  if(mclick){ensureAudio();startBgMusic();STATE='menu';}
+}
+
 // ── main loop ────────────────────────────────────────────────
 let last=0;
 function loop(ts){
@@ -817,7 +832,8 @@ function loop(ts){
       if(money<fee&&money<Math.min(...Object.values(UPG).filter(u=>u.level<u.max).map(u=>u.costs[u.level]),999))
         STATE='gameover';
     }
-  }else if(STATE==='menu')renderMenu();
+  }else if(STATE==='title')renderTitle();
+  else if(STATE==='menu')renderMenu();
   else if(STATE==='shop')renderShop();
   else if(STATE==='results')renderResults();
   else if(STATE==='gameover')renderGameOver();
