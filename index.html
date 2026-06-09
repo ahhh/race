@@ -59,6 +59,12 @@ function sfxJump(){beep(330,0.1,0.16,'sine');setTimeout(()=>beep(580,0.18,0.12,'
 function sfxTurbo(){beep(550,0.07,0.22,'sine');setTimeout(()=>beep(880,0.14,0.18,'sine'),55);setTimeout(()=>beep(1100,0.12,0.14,'sine'),110);}
 function sfxWin(){[523,659,784,1047].forEach((f,i)=>setTimeout(()=>beep(f,'sine',0.28),i*130));}
 function sfxCountdown(n){beep(n>0?440:880,0.2,0.3);}
+let bgMusic=null;
+function startBgMusic(){
+  if(!bgMusic){bgMusic=new Audio('pixel_sprint.mp3');bgMusic.loop=true;bgMusic.volume=0.35;}
+  if(bgMusic.paused)bgMusic.play().catch(()=>{});
+}
+function stopBgMusic(){if(bgMusic){bgMusic.pause();bgMusic.currentTime=0;}}
 
 // ── sprites ──────────────────────────────────────────────────
 const CAR_CELLS=[{col:0,row:0},{col:0,row:1},{col:2,row:1},{col:1,row:1}];
@@ -126,7 +132,7 @@ function drawStars(){
 }
 
 // ── game state ────────────────────────────────────────────────
-let STATE='menu';
+let STATE='title';
 let money=250,raceNum=0,finishOrder=[],lastPrize=0;
 const PRIZES=[600,350,150,50];
 const ENTRY_FEES=[0,80,120,180,250,350];
@@ -644,7 +650,7 @@ function renderMenu(){
   ctx.strokeStyle=hov?hue(300):hue(0);ctx.lineWidth=1.5;ctx.stroke();noGlow();
   ctx.fillStyle=hov?hue(300):hue(0);ctx.font='bold 26px Courier New';ctx.textAlign='center';
   ctx.fillText('[ ENTER THE FRACTAL ]',W/2,492);
-  if(hov&&mclick||keys['Space']){ensureAudio();initRace();STATE='race';keys['Space']=false;}
+  if(hov&&mclick||keys['Space']){ensureAudio();initRace();STATE='race';startBgMusic();keys['Space']=false;}
 
   ctx.fillStyle='#554488';ctx.font='12px Courier New';ctx.textAlign='center';
   ctx.fillText('WASD / ARROWS = Drive   SPACE = Nitro Boost',W/2,538);
@@ -714,7 +720,7 @@ function renderShop(){
   ctx.fillStyle=canRace?(rHov?hue(60):hue(300)):'#440033';
   ctx.font='bold 22px Courier New';ctx.textAlign='center';
   ctx.fillText(canRace?'[ RACE!  -$'+fee+' ]':'NEED $'+(fee-money)+' MORE',W/2,502);
-  if(rHov&&mclick&&canRace){money-=fee;initRace();STATE='race';beep(880,0.2,0.3);}
+  if(rHov&&mclick&&canRace){money-=fee;initRace();STATE='race';startBgMusic();beep(880,0.2,0.3);}
 
   const sHov=mx>=W/2-100&&mx<=W/2+100&&my>=538&&my<=560;
   glow(sHov?'#ff0066':'#440022',sHov?10:0);ctx.fillStyle=sHov?'#ff0066':'#550033';ctx.font='15px Courier New';
@@ -788,6 +794,24 @@ function renderGameOver(){
   ctx.restore();
 }
 
+// ── title screen ─────────────────────────────────────────────
+function renderTitle(){
+  drawStars();
+  ctx.fillStyle='rgba(2,0,8,0.55)';ctx.fillRect(0,0,W,H);
+  glow(hue(300),32);
+  ctx.fillStyle=hue(300);ctx.font='bold 80px Courier New';ctx.textAlign='center';
+  ctx.fillText('FRACTAL RIDER',W/2,H/2-60);
+  noGlow();
+  const blink=Math.floor(now_ms/500)%2===0;
+  if(blink){
+    glow(hue(180),14);
+    ctx.fillStyle=hue(180);ctx.font='bold 28px Courier New';
+    ctx.fillText('CLICK  TO  START',W/2,H/2+30);
+    noGlow();
+  }
+  if(mclick){ensureAudio();startBgMusic();STATE='menu';}
+}
+
 // ── main loop ────────────────────────────────────────────────
 let last=0;
 function loop(ts){
@@ -808,7 +832,8 @@ function loop(ts){
       if(money<fee&&money<Math.min(...Object.values(UPG).filter(u=>u.level<u.max).map(u=>u.costs[u.level]),999))
         STATE='gameover';
     }
-  }else if(STATE==='menu')renderMenu();
+  }else if(STATE==='title')renderTitle();
+  else if(STATE==='menu')renderMenu();
   else if(STATE==='shop')renderShop();
   else if(STATE==='results')renderResults();
   else if(STATE==='gameover')renderGameOver();
